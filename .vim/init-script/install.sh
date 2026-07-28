@@ -104,7 +104,7 @@ plugin name=vim-which-key cat=ui \
   repo=https://github.com/liuchengxu/vim-which-key.git
 
 plugin name=gruvbox cat=ui \
-  repo=https://github.com/morhetz/gruvbox.git
+  repo=https://github.com/gruvbox-community/gruvbox.git
 
 # ---------- helpers ----------
 
