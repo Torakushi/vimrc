@@ -214,7 +214,10 @@ print_notes() {
 
 cmd_install() {
   install_deps
-  echo "${BOLD}Installing plugins:${RESET}"
+  echo "${BOLD}Installing plugins into:${RESET} $VIM_PACK_DIR"
+  if [ -L "$HOME/.vim" ]; then
+    echo "  (~/.vim is a symlink -> $(readlink "$HOME/.vim"), so plugins land under there/pack)"
+  fi
   local i name cat repo dir loc ref
   for i in "${!P_name[@]}"; do
     in_profile "${P_prof[$i]}" "$PROFILE" || continue
@@ -343,6 +346,9 @@ link_one() {
 cmd_link() {
   link_one "$REPO_DIR/.vimrc" "$HOME/.vimrc"
   link_one "$REPO_DIR/.vim"   "$HOME/.vim"
+  echo
+  echo "${BOLD}${RED}Now run: install.sh install${RESET}"
+  echo "plugins are gitignored, they must be (re)cloned into .vim/pack"
 }
 
 unlink_one() {
