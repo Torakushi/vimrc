@@ -278,6 +278,9 @@ nnoremap <silent> <expr> <leader>f  (expand('%') =~ 'NERD_tree' ? "\<C-w>\<C-w>"
 nnoremap <silent> <expr> <leader>gF (expand('%') =~ 'NERD_tree' ? "\<C-w>\<C-w>" : '') . ":GFiles<CR>"
 nnoremap <silent> <expr> <leader>b  (expand('%') =~ 'NERD_tree' ? "\<C-w>\<C-w>" : '') . ":Buffers<CR>"
 
+" delete buffer but keep the window (go to previous, drop the alternate)
+nnoremap <silent> <leader>d :bp <bar> bd #<CR>
+
 " ================================================================================
 "                                  LIGHTLINE
 " ================================================================================
