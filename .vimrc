@@ -15,10 +15,9 @@ set secure
 let mapleader = ","
 
 " Add a final newline at the end of file when saving
-autocmd BufWritePre * if &fixendofline | endif
+set fixendofline
 
-" Trim trailing whitespace on save
-autocmd BufWritePre * %s/\s\+$//e
+" Trailing whitespace is trimmed on save by ALE (see g:ale_fixers '*')
 
 " show existing tab with 2 spaces width
 set tabstop=2
@@ -32,18 +31,17 @@ set expandtab
 " Open a terminal in a new window in the same directory as the current file
 map <F6> :let $VIM_DIR=expand('%:p:h')<CR>:terminal<CR>cd $VIM_DIR<CR>
 
-" Show a delimiter for the column at 80 characters
-:set colorcolumn=120
+" Show a delimiter for the column at 120 characters
+set colorcolumn=120
 
 " Show line numbers
 set number
 
+" Highlight the current line (easier to spot the cursor)
+set cursorline
 
-" Vim diff colors
-hi DiffAdd      ctermfg=NONE          ctermbg=Green
-hi DiffChange   ctermfg=NONE          ctermbg=NONE
-hi DiffDelete   ctermfg=LightBlue     ctermbg=Red
-hi DiffText     ctermfg=Yellow        ctermbg=Red
+" Bigger pattern-match memory limit (avoids 'maxmempattern exceeded')
+set maxmempattern=2000000
 
 
 " ##############################################################################
@@ -57,7 +55,11 @@ syntax on
 " Enables filetype-specific plugins.
 filetype plugin indent on
 
-" Use new regular expression engine
+" gruvbox (256-color, ok in Terminal.app). silent! in case it's not installed yet
+set background=dark
+silent! colorscheme gruvbox
+
+" Auto-select the regexp engine (0 = auto, not "new"; new engine is re=2)
 set re=0
 
 
@@ -77,27 +79,44 @@ function! s:on_lsp_buffer_enabled() abort
     if exists('+tagfunc') | setlocal tagfunc=lsp#tagfunc | endif
 
     " ---------- LSP navigation mappings ----------
-    nmap <buffer> gd <plug>(lsp-definition)              " Go to definition
-    nmap <buffer> gs <plug>(lsp-document-symbol-search)  " Search symbols in this file
-    nmap <buffer> gS <plug>(lsp-workspace-symbol-search) " Search symbols in workspace
-    nmap <buffer> gr <plug>(lsp-references)              " Find references
-    nmap <buffer> gi <plug>(lsp-implementation)          " Go to implementation
-    nmap <buffer> gt <plug>(lsp-type-definition)         " Go to type definition
+    " NOTE: no trailing comment after :map, the '"' becomes part of the mapping
+    " Go to definition
+    nmap <buffer> gd <plug>(lsp-definition)
+    " Search symbols in this file
+    nmap <buffer> gs <plug>(lsp-document-symbol-search)
+    " Search symbols in workspace
+    nmap <buffer> gS <plug>(lsp-workspace-symbol-search)
+    " Find references
+    nmap <buffer> gr <plug>(lsp-references)
+    " Go to implementation
+    nmap <buffer> gi <plug>(lsp-implementation)
+    " Go to type definition
+    nmap <buffer> gt <plug>(lsp-type-definition)
 
     " ---------- LSP actions ----------
-    nmap <buffer> <leader>rn <plug>(lsp-rename)          " Rename symbol
-    nmap <buffer> [g <plug>(lsp-previous-diagnostic)     " Jump to previous diagnostic
-    nmap <buffer> ]g <plug>(lsp-next-diagnostic)         " Jump to next diagnostic
-    nmap <buffer> K <plug>(lsp-hover)                    " Show hover documentation
+    " Rename symbol
+    nmap <buffer> <leader>rn <plug>(lsp-rename)
+    " Jump to previous diagnostic
+    nmap <buffer> [g <plug>(lsp-previous-diagnostic)
+    " Jump to next diagnostic
+    nmap <buffer> ]g <plug>(lsp-next-diagnostic)
+    " Open the diagnostics list
+    nmap <buffer> <leader>e <plug>(lsp-document-diagnostics)
+    " Show hover documentation
+    nmap <buffer> K <plug>(lsp-hover)
 
     " ---------- Scrolling in hover/docs popups ----------
-    nnoremap <buffer> <expr><c-f> lsp#scroll(+4)          " Scroll down in popup
-    nnoremap <buffer> <expr><c-d> lsp#scroll(-4)          " Scroll up in popup
+    " Scroll down in popup
+    nnoremap <buffer> <expr> <c-f> lsp#scroll(+4)
+    " Scroll up in popup
+    nnoremap <buffer> <expr> <c-d> lsp#scroll(-4)
 
     " ---------- Formatting ----------
-    let g:lsp_format_sync_timeout = 1000                  " Format timeout (ms)
-    autocmd! BufWritePre *.rs,*.go call execute('LspDocumentFormatSync')
-    " NOTE: Above formats Rust and Go before saving. Add *.py if needed.
+    " Format Rust/Go via LSP before saving. Buffer-local so it only attaches to
+    " files that have an LSP (TS is handled by ALE). Add filetypes here if needed.
+    if &filetype ==# 'rust' || &filetype ==# 'go'
+        autocmd! BufWritePre <buffer> call execute('LspDocumentFormatSync')
+    endif
 
     " More commands can be added here as needed (check vim-lsp docs)
 endfunction
@@ -109,6 +128,9 @@ augroup lsp_install
     autocmd User lsp_buffer_enabled call s:on_lsp_buffer_enabled()
 augroup END
 
+" Format timeout (ms)
+let g:lsp_format_sync_timeout = 1000
+
 " ============ LSP configuration by file type ===========
 "
 " TYPESCRIPT
@@ -117,18 +139,37 @@ let g:lsp_settings_filetype_javascriptreact = ['typescript-language-server']
 let g:lsp_settings_filetype_typescript = ['typescript-language-server']
 
 " RUST
-let g:lsp_settings_filetype_rust = ['rust-analyzer', 'bacon-ls']
+let g:lsp_settings_filetype_rust = ['rust-analyzer']
 let g:lsp_settings = {
 \ 'rust-analyzer': {
 \   'initialization_options': {
-\     'checkOnSave': v:false,
-\     'diagnostics': v:false,
+\     'checkOnSave': v:true,
+\     'diagnostics': v:true,
 \   },
 \ }
 \}
 
 " for monorepo... doesn't work well currently
 let g:lsp_experimental_workspace_folders = 1
+
+
+" ============ LSP diagnostics display ===========
+" full error on virtual lines above the code, wrapped
+let g:lsp_diagnostics_virtual_text_enabled = 1
+let g:lsp_diagnostics_virtual_text_align = 'above'
+let g:lsp_diagnostics_virtual_text_wrap = 'wrap'
+let g:lsp_diagnostics_virtual_text_padding_left = 4
+" and a float when the cursor is on the line
+let g:lsp_diagnostics_float_cursor = 1
+let g:lsp_diagnostics_echo_cursor = 0
+set updatetime=500
+" hover in a float, not a preview split
+let g:lsp_hover_ui = 'float'
+let g:lsp_float_max_width = 100
+let g:lsp_preview_max_width = 100
+let g:lsp_preview_max_height = 30
+" wrap long messages in the location list
+autocmd FileType qf setlocal wrap
 
 
 " ================================================================================
@@ -213,15 +254,11 @@ let g:fzf_vim.buffers_jump = 1
 
 " [Ag|Rg|RG] Display path on a separate line for narrow screens (default: 0)
 " * Requires Perl and fzf 0.56.0 or later
-let g:fzf_vim.grep_multi_line = 0
-   " PATH:LINE:COL:LINE
+" Set ONLY one value (before all 3 ran, so 2 always won):
+"   0 = PATH:LINE:COL:LINE
+"   1 = PATH:LINE:COL: / LINE on next line
+"   2 = same as 1 + empty line between items (--gap)
 let g:fzf_vim.grep_multi_line = 1
-   " PATH:LINE:COL:
-   " LINE
-let g:fzf_vim.grep_multi_line = 2
-   " PATH:LINE:COL:
-   " LINE
-   " (empty line between items using --gap option)
 
 " [[B]Commits] Customize the options used by 'git log':
 let g:fzf_vim.commits_log_options = '--graph --color=always --format="%C(auto)%h%d %s %C(black)%C(bold)%cr"'
@@ -242,13 +279,53 @@ nnoremap <silent> <expr> <leader>gF (expand('%') =~ 'NERD_tree' ? "\<C-w>\<C-w>"
 nnoremap <silent> <expr> <leader>b  (expand('%') =~ 'NERD_tree' ? "\<C-w>\<C-w>" : '') . ":Buffers<CR>"
 
 " ================================================================================
-"                                    COPILOT
+"                                  LIGHTLINE
 " ================================================================================
 
+set laststatus=2
+set noshowmode
 
-" Change Tab to Ctrl-J to accept Copilot suggestions
-imap <silent><script><expr> <C-J> copilot#Accept("\<CR>")
-let g:copilot_no_tab_map = v:true
+" show [git]/[working] in the statusline, only when diffing
+function! DiffSide() abort
+  if !&diff | return '' | endif
+  return bufname('%') =~# 'fugitive:\|/\.git/' ? '[git]' : '[working]'
+endfunction
+
+let g:lightline = {
+\ 'colorscheme': 'gruvbox',
+\ 'active': {
+\   'left': [ ['mode', 'paste'], ['readonly', 'relativepath', 'modified'], ['diffside'] ]
+\ },
+\ 'component_function': {
+\   'diffside': 'DiffSide'
+\ }
+\}
+
+
+" ================================================================================
+"                                  WHICH-KEY
+" ================================================================================
+
+" popup of <leader> maps after a pause
+set timeoutlen=500
+nnoremap <silent> <leader> :<c-u>WhichKey ','<CR>
+vnoremap <silent> <leader> :<c-u>WhichKeyVisual ','<CR>
+
+
+" ================================================================================
+"                                    TABBY
+" ================================================================================
+" Lazy AI completion. `tabby-on` in a terminal to start the server, :TabbyOn in vim.
+" <C-\> triggers, <C-l> accepts.
+let g:tabby_trigger_mode = 'manual'
+let g:tabby_keybinding_accept = '<C-l>'
+let g:tabby_keybinding_trigger_or_dismiss = '<C-\>'
+" set this if vim can't find node
+"let g:tabby_node_binary = expand('~/.nvm/versions/node/v24.13.1/bin/node')
+command! TabbyOn packadd vim-tabby
+
+" copilot gone, disable it in case the dir is still around
+let g:copilot_filetypes = { '*': v:false }
 
 
 " ================================================================================
@@ -275,6 +352,9 @@ nnoremap <C-e> :NERDTreeFind<CR>
 
 " Disable ALE's LSP support, we use vim-lsp instead
 let g:ale_disable_lsp = 1
+
+" no ALE linting for rust, vim-lsp handles it
+let g:ale_linters = { 'rust': [] }
 
 
 let g:ale_fixers = {

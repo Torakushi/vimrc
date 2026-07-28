@@ -1,0 +1,5 @@
+# Plugins are cloned by install.sh, not tracked
+.vim/pack/
+
+# netrw history
+.vim/.netrwhist
