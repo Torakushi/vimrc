@@ -3,3 +3,6 @@
 
 # netrw history
 .vim/.netrwhist
+
+# undo tree
+.vim/undodir

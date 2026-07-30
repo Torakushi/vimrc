@@ -88,6 +88,12 @@ plugin name=vim-commentary cat=edit prof=full,minimal \
 plugin name=vim-repeat cat=edit prof=full,minimal \
   repo=https://github.com/tpope/vim-repeat.git
 
+plugin name=vim-unimpaired cat=edit prof=full,minimal \
+  repo=https://github.com/tpope/vim-unimpaired.git
+
+plugin name=traces.vim cat=edit \
+  repo=https://github.com/markonm/traces.vim.git
+
 plugin name=targets.vim cat=edit \
   repo=https://github.com/wellle/targets.vim.git
 
@@ -105,6 +111,12 @@ plugin name=vim-which-key cat=ui \
 
 plugin name=gruvbox cat=ui \
   repo=https://github.com/gruvbox-community/gruvbox.git
+
+plugin name=undotree cat=ui \
+  repo=https://github.com/mbbill/undotree.git
+
+plugin name=vim-highlightedyank cat=ui \
+  repo=https://github.com/machakann/vim-highlightedyank.git
 
 # ---------- helpers ----------
 
@@ -256,6 +268,7 @@ cmd_update() {
       git -C "$dir" pull --ff-only >/dev/null 2>&1 && echo "ok" || echo "failed"
     fi
   done
+  gen_helptags
 }
 
 cmd_clean() {
@@ -336,6 +349,11 @@ link_one() {
     echo "  $dst already linked"; return 0
   fi
   if [ -e "$dst" ] || [ -L "$dst" ]; then
+    # a leftover .bak would be silently nested into by mv, refuse instead
+    if [ -e "$dst.bak" ] || [ -L "$dst.bak" ]; then
+      echo "  ${RED}$dst.bak already exists, move or delete it first${RESET}"
+      return 1
+    fi
     echo "  backup $dst -> $dst.bak"
     run mv "$dst" "$dst.bak"
   fi

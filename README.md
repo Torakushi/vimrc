@@ -31,7 +31,7 @@ No argument: welcome screen (list + usage).
 ## Profiles
 
 - `full`: everything (LSP, Tabby, ALE, fzf, git...)
-- `minimal`: fzf, nerdtree, rooter, fugitive only. For SSH / servers.
+- `minimal`: fzf, nerdtree, rooter, fugitive and the small edit plugins (surround, commentary, repeat, unimpaired). For SSH / servers.
 
 ## Dependencies
 

@@ -29,7 +29,7 @@ set shiftwidth=2
 set expandtab
 
 " Open a terminal in a new window in the same directory as the current file
-map <F6> :let $VIM_DIR=expand('%:p:h')<CR>:terminal<CR>cd $VIM_DIR<CR>
+nnoremap <F6> :call term_start(&shell, {'cwd': expand('%:p:h')})<CR>
 
 " Show a delimiter for the column at 120 characters
 set colorcolumn=120
@@ -43,6 +43,37 @@ set cursorline
 " Bigger pattern-match memory limit (avoids 'maxmempattern exceeded')
 set maxmempattern=2000000
 
+" yank/delete/paste use the system clipboard
+" the system register is + on linux and * on mac, pick the right one
+if has('unnamedplus')
+  set clipboard=unnamedplus
+else
+  set clipboard=unnamed
+endif
+
+" allow switching to another buffer without saving the current one first
+set hidden
+
+" defaults.vim is skipped when a vimrc exists, so set its useful options here
+" backspace can delete indent, line breaks and text inserted before
+set backspace=indent,eol,start
+
+" highlight matches while typing a search, and keep them highlighted
+set incsearch
+set hlsearch
+
+" ignore case when searching, except if the pattern has an uppercase letter
+set ignorecase
+set smartcase
+
+" completion menu for the command line (:e <TAB>, :color <TAB>...)
+set wildmenu
+
+" keep the undo history of a file after closing it
+set undofile
+set undodir=~/.vim/undodir
+silent! call mkdir(expand(&undodir), 'p')
+
 
 " ##############################################################################
 "
@@ -54,6 +85,9 @@ syntax on
 
 " Enables filetype-specific plugins.
 filetype plugin indent on
+
+" built in plugin, % also jumps between if/endif, opening/closing html tags...
+packadd! matchit
 
 " gruvbox (256-color, ok in Terminal.app). silent! in case it's not installed yet
 set background=dark
@@ -96,6 +130,8 @@ function! s:on_lsp_buffer_enabled() abort
     " ---------- LSP actions ----------
     " Rename symbol
     nmap <buffer> <leader>rn <plug>(lsp-rename)
+    " Code action (add missing import, quick fixes)
+    nnoremap <buffer> <leader>ca :LspCodeAction<CR>
     " Jump to previous diagnostic
     nmap <buffer> [g <plug>(lsp-previous-diagnostic)
     " Jump to next diagnostic
@@ -144,7 +180,7 @@ let g:lsp_settings = {
 \ 'rust-analyzer': {
 \   'initialization_options': {
 \     'checkOnSave': v:true,
-\     'diagnostics': v:true,
+\     'diagnostics': {'enable': v:true},
 \   },
 \ }
 \}
@@ -169,7 +205,22 @@ let g:lsp_float_max_width = 100
 let g:lsp_preview_max_width = 100
 let g:lsp_preview_max_height = 30
 " wrap long messages in the location list
-autocmd FileType qf setlocal wrap
+augroup qf_wrap
+    au!
+    autocmd FileType qf setlocal wrap
+    " dd deletes the line under the cursor from the list
+    autocmd FileType qf nnoremap <silent> <buffer> dd :call <SID>qf_delete_line()<CR>
+augroup END
+
+" works on the quickfix and on the location list
+function! s:qf_delete_line() abort
+  let lnum = line('.')
+  if getwininfo(win_getid())[0].loclist
+    call setloclist(0, filter(getloclist(0), {idx -> idx != lnum - 1}), 'r')
+  else
+    call setqflist(filter(getqflist(), {idx -> idx != lnum - 1}), 'r')
+  endif
+endfunction
 
 
 " ================================================================================
@@ -205,10 +256,8 @@ inoremap <expr><S-TAB> pumvisible() ? "\<C-p>" : "\<C-h>"
 " be overridden all the time
 let g:asyncomplete_auto_completeopt = 0
 
-set completeopt=menuone,noinsert,noselect,preview
-
-" To auto close preview window when completion is done.
-autocmd! CompleteDone * if pumvisible() == 0 | pclose | endif
+" popup shows the documentation in a floating window instead of a preview split
+set completeopt=menuone,noinsert,noselect,popup
 
 
 " ================================================================================
@@ -270,6 +319,12 @@ let g:fzf_vim.tags_command = 'ctags -R'
 let g:fzf_vim.commands_expect = 'alt-enter,ctrl-x'
 
 
+" :Rg searches hidden files too (dotfiles), but still skips .git
+command! -bang -nargs=* Rg call fzf#vim#grep(
+  \ 'rg --column --line-number --no-heading --color=always --smart-case --hidden --glob "!.git" -- ' . fzf#shellescape(<q-args>),
+  \ fzf#vim#with_preview(), <bang>0)
+
+
 " ================================ Shortcuts ===================================
 
 " For these shortcut, we don't want to overwrite the NERDTREE Buffers. We
@@ -278,8 +333,15 @@ nnoremap <silent> <expr> <leader>f  (expand('%') =~ 'NERD_tree' ? "\<C-w>\<C-w>"
 nnoremap <silent> <expr> <leader>gF (expand('%') =~ 'NERD_tree' ? "\<C-w>\<C-w>" : '') . ":GFiles<CR>"
 nnoremap <silent> <expr> <leader>b  (expand('%') =~ 'NERD_tree' ? "\<C-w>\<C-w>" : '') . ":Buffers<CR>"
 
-" delete buffer but keep the window (go to previous, drop the alternate)
-nnoremap <silent> <leader>d :bp <bar> bd #<CR>
+" delete buffer, keep the window (open an empty one if it's the last buffer)
+function! s:bufdelete() abort
+  if len(getbufinfo({'buflisted':1})) > 1
+    bprevious | bdelete #
+  else
+    enew | bdelete #
+  endif
+endfunction
+nnoremap <silent> <leader>d :call <SID>bufdelete()<CR>
 
 " ================================================================================
 "                                  LIGHTLINE
@@ -311,6 +373,8 @@ let g:lightline = {
 
 " popup of <leader> maps after a pause
 set timeoutlen=500
+" but keep key codes fast, or leaving insert mode with <Esc> lags 500ms
+set ttimeoutlen=50
 nnoremap <silent> <leader> :<c-u>WhichKey ','<CR>
 vnoremap <silent> <leader> :<c-u>WhichKeyVisual ','<CR>
 
@@ -335,15 +399,18 @@ let g:copilot_filetypes = { '*': v:false }
 "                                   NERDTREE
 " ================================================================================
 
-" Exit Vim if NERDTree is the only window remaining in the only tab.
-autocmd BufEnter * if tabpagenr('$') == 1 && winnr('$') == 1 && exists('b:NERDTree') && b:NERDTree.isTabTree() | call feedkeys(":quit\<CR>:\<BS>") | endif
+augroup nerdtree_behavior
+    au!
+    " Exit Vim if NERDTree is the only window remaining in the only tab.
+    autocmd BufEnter * if tabpagenr('$') == 1 && winnr('$') == 1 && exists('b:NERDTree') && b:NERDTree.isTabTree() | call feedkeys(":quit\<CR>:\<BS>") | endif
 
-" Close the tab if NERDTree is the only window remaining in it.
-autocmd BufEnter * if winnr('$') == 1 && exists('b:NERDTree') && b:NERDTree.isTabTree() | call feedkeys(":quit\<CR>:\<BS>") | endif
+    " Close the tab if NERDTree is the only window remaining in it.
+    autocmd BufEnter * if winnr('$') == 1 && exists('b:NERDTree') && b:NERDTree.isTabTree() | call feedkeys(":quit\<CR>:\<BS>") | endif
 
-" If another buffer tries to replace NERDTree, put it in the other window, and bring back NERDTree.
-autocmd BufEnter * if winnr() == winnr('h') && bufname('#') =~ 'NERD_tree_\d\+' && bufname('%') !~ 'NERD_tree_\d\+' && winnr('$') > 1 |
-    \ let buf=bufnr() | buffer# | execute "normal! \<C-W>w" | execute 'buffer'.buf | endif
+    " If another buffer tries to replace NERDTree, put it in the other window, and bring back NERDTree.
+    autocmd BufEnter * if winnr() == winnr('h') && bufname('#') =~ 'NERD_tree_\d\+' && bufname('%') !~ 'NERD_tree_\d\+' && winnr('$') > 1 |
+        \ let buf=bufnr() | buffer# | execute "normal! \<C-W>w" | execute 'buffer'.buf | endif
+augroup END
 
 nnoremap <C-t> :NERDTreeToggle<CR>
 nnoremap <C-e> :NERDTreeFind<CR>
@@ -373,6 +440,9 @@ let g:ale_fix_on_save = 1
 "                                   VIM-TEST
 " ================================================================================
 
+" run tests in a terminal split, async and with live output
+let test#strategy = 'vimterminal'
+
 " Since this config is project specific, we will put it in a local vimrc
 " We keep it here for reference, but it will not be loaded by default.
 "
@@ -392,3 +462,27 @@ let g:ale_fix_on_save = 1
 " Since it's only for the dfns monorepo, we will set the specific vim-test
 " configuration is a local vimrc
 let g:rooter_manual_only = 1
+
+
+" ================================================================================
+"                                  UNDOTREE
+" ================================================================================
+
+" visual undo history, works with undofile to browse changes of past sessions
+nnoremap <leader>u :UndotreeToggle<CR>
+
+" close undotree before quitting the last window, or vim 9.1 throws E1312
+function! s:closeUndotreeIfLast() abort
+  if !exists('t:undotree') || !t:undotree.IsVisible()
+    return
+  endif
+  let panels = 1 + ((exists('t:diffpanel') && t:diffpanel.IsVisible()) ? 1 : 0)
+  if winnr('$') - panels <= 1
+    call undotree#UndotreeHide()
+  endif
+endfunction
+
+augroup undotree_close
+    au!
+    autocmd QuitPre * call s:closeUndotreeIfLast()
+augroup END
