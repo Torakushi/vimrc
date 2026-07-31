@@ -40,6 +40,9 @@ set number
 " Highlight the current line (easier to spot the cursor)
 set cursorline
 
+" toggle the sign column, yon from unimpaired does the same for the numbers
+nnoremap <silent> yoS :let &l:signcolumn = (&l:signcolumn ==# 'no' ? 'yes' : 'no')<CR>
+
 " Bigger pattern-match memory limit (avoids 'maxmempattern exceeded')
 set maxmempattern=2000000
 
@@ -89,9 +92,9 @@ filetype plugin indent on
 " built in plugin, % also jumps between if/endif, opening/closing html tags...
 packadd! matchit
 
-" gruvbox (256-color, ok in Terminal.app). silent! in case it's not installed yet
+" retrobox, the built in gruvbox clone (256-color, ok in Terminal.app)
 set background=dark
-silent! colorscheme gruvbox
+silent! colorscheme retrobox
 
 " Auto-select the regexp engine (0 = auto, not "new"; new engine is re=2)
 set re=0
@@ -357,7 +360,7 @@ function! DiffSide() abort
 endfunction
 
 let g:lightline = {
-\ 'colorscheme': 'gruvbox',
+\ 'colorscheme': 'wombat',
 \ 'active': {
 \   'left': [ ['mode', 'paste'], ['readonly', 'relativepath', 'modified'], ['diffside'] ]
 \ },
