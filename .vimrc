@@ -178,9 +178,13 @@ let g:lsp_settings_filetype_javascriptreact = ['typescript-language-server']
 let g:lsp_settings_filetype_typescript = ['typescript-language-server']
 
 " RUST
+" use rustup's rust-analyzer, not the standalone one vim-lsp-settings
+" downloads: it always matches the installed toolchain, so a rustup update
+" can't leave a stale server that loads no workspace
 let g:lsp_settings_filetype_rust = ['rust-analyzer']
 let g:lsp_settings = {
 \ 'rust-analyzer': {
+\   'cmd': [expand('~/.cargo/bin/rust-analyzer')],
 \   'initialization_options': {
 \     'checkOnSave': v:true,
 \     'diagnostics': {'enable': v:true},
