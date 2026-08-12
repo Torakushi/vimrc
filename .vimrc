@@ -43,6 +43,10 @@ set cursorline
 " toggle the sign column, yon from unimpaired does the same for the numbers
 nnoremap <silent> yoS :let &l:signcolumn = (&l:signcolumn ==# 'no' ? 'yes' : 'no')<CR>
 
+" delete to the black hole register, keeps the yank and the clipboard intact
+nnoremap <leader>x "_d
+xnoremap <leader>x "_d
+
 " Bigger pattern-match memory limit (avoids 'maxmempattern exceeded')
 set maxmempattern=2000000
 
@@ -322,10 +326,30 @@ let g:fzf_vim.tags_command = 'ctags -R'
 let g:fzf_vim.commands_expect = 'alt-enter,ctrl-x'
 
 
+" Plugins like vim-rooter :cd into the nearest package.json (see the project
+" .vimrc of monorepos), which would otherwise limit fzf to that subpackage.
+" Always search from the git toplevel of the current file instead.
+function! s:FzfRoot() abort
+  let l:dir = expand('%:p:h')
+  if l:dir ==# '' || !isdirectory(l:dir)
+    let l:dir = getcwd()
+  endif
+  let l:root = systemlist('git -C ' . shellescape(l:dir) . ' rev-parse --show-toplevel')
+  return (v:shell_error || empty(l:root)) ? getcwd() : l:root[0]
+endfunction
+
 " :Rg searches hidden files too (dotfiles), but still skips .git
 command! -bang -nargs=* Rg call fzf#vim#grep(
   \ 'rg --column --line-number --no-heading --color=always --smart-case --hidden --glob "!.git" -- ' . fzf#shellescape(<q-args>),
+  \ fzf#vim#with_preview({'dir': s:FzfRoot()}), <bang>0)
+
+" :Files / :GFiles default to the repo root instead of the current directory
+command! -bang -nargs=? -complete=dir Files
+  \ call fzf#vim#files(empty(<q-args>) ? s:FzfRoot() : <q-args>,
   \ fzf#vim#with_preview(), <bang>0)
+
+command! -bang -nargs=? GFiles
+  \ call fzf#vim#gitfiles(<q-args>, fzf#vim#with_preview({'dir': s:FzfRoot()}), <bang>0)
 
 
 " ================================ Shortcuts ===================================
