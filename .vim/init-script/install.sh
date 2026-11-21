@@ -57,6 +57,10 @@ plugin name=vim-lsp-settings cat=lsp brew=node apt=nodejs \
   repo=https://github.com/mattn/vim-lsp-settings.git \
   note="LSP servers install via :LspInstallServer (rust: rustup + rust-analyzer)"
 
+plugin name=lean.vim cat=syntax \
+  repo=https://github.com/leanprover/lean.vim.git \
+  note="Lean syntax/ftplugin only; the LSP is registered by hand in .vimrc (lake serve / lean --server)"
+
 plugin name=fzf.vim cat=fzf prof=full,minimal \
   repo=https://github.com/junegunn/fzf.vim.git \
   brew=fzf,bat,ripgrep,universal-ctags,git-delta \

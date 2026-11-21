@@ -196,6 +196,34 @@ let g:lsp_settings = {
 \ }
 \}
 
+" LEAN 4
+" vim-lsp-settings has no entry for lean, so register the server by hand.
+" Inside a lake project use `lake serve` (resolves deps like Mathlib),
+" otherwise fall back to the bare `lean --server`. Binaries come from elan.
+function! s:lean_lsp_cmd(server_info) abort
+    let l:root = lsp#utils#find_nearest_parent_file_directory(
+        \ lsp#utils#get_buffer_path(), ['lakefile.lean', 'lakefile.toml'])
+    if !empty(l:root) && executable('lake')
+        return ['lake', 'serve', '--']
+    endif
+    return ['lean', '--server']
+endfunction
+
+if executable('lean')
+    augroup lsp_lean
+        au!
+        au User lsp_setup call lsp#register_server({
+            \ 'name': 'lean',
+            \ 'cmd': function('s:lean_lsp_cmd'),
+            \ 'root_uri': {server_info->lsp#utils#path_to_uri(
+            \     lsp#utils#find_nearest_parent_file_directory(
+            \         lsp#utils#get_buffer_path(),
+            \         ['lakefile.lean', 'lakefile.toml', 'lean-toolchain', '.git/']))},
+            \ 'allowlist': ['lean'],
+            \ })
+    augroup END
+endif
+
 " for monorepo... doesn't work well currently
 let g:lsp_experimental_workspace_folders = 1
 
