@@ -5,8 +5,11 @@
 
 set -euo pipefail
 
-# Repo root, found from the script's own location (works from any cwd)
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# Repo root, found from the script's own location (works from any cwd).
+# Physical paths (-P): running from ~/.vim/init-script through the ~/.vim
+# symlink would otherwise resolve ../.. to $HOME and link files onto themselves.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd -P)"
 
 # Where plugins are cloned. Overridable for tests: VIM_PACK_DIR=/tmp/x ./install.sh ...
 VIM_PACK_DIR="${VIM_PACK_DIR:-$HOME/.vim/pack}"
@@ -346,6 +349,10 @@ cmd_doctor() {
 
 link_one() {
   local src="$1" dst="$2"
+  if [ "$src" = "$dst" ]; then
+    echo "  ${RED}refusing to link $dst onto itself (run from the repo, not through ~/.vim)${RESET}"
+    return 1
+  fi
   if [ -L "$dst" ] && [ "$(readlink "$dst")" = "$src" ]; then
     echo "  $dst already linked"; return 0
   fi
