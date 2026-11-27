@@ -500,6 +500,10 @@ let g:ale_fixers = {
 " fix on save
 let g:ale_fix_on_save = 1
 
+" lint on open and save only, eslint takes seconds on the monorepo
+let g:ale_lint_on_text_changed = 'never'
+let g:ale_lint_on_insert_leave = 0
+
 
 " ================================================================================
 "                                   VIM-TEST
