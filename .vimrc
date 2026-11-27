@@ -137,7 +137,7 @@ function! s:on_lsp_buffer_enabled() abort
     " Go to implementation
     nmap <buffer> gi <plug>(lsp-implementation)
     " Go to type definition
-    nmap <buffer> gt <plug>(lsp-type-definition)
+    nmap <buffer> gy <plug>(lsp-type-definition)
 
     " ---------- LSP actions ----------
     " Rename symbol
@@ -554,6 +554,34 @@ augroup END
 
 
 " ================================================================================
+"                          WINDOWS / TABS / BUFFERS
+" ================================================================================
+
+set splitright
+set splitbelow
+
+nnoremap <C-h> <C-w>h
+nnoremap <C-j> <C-w>j
+nnoremap <C-k> <C-w>k
+nnoremap <C-l> <C-w>l
+
+nnoremap <silent> <leader>wv :vsplit<CR>
+nnoremap <silent> <leader>ws :split<CR>
+nnoremap <silent> <leader>wo :only<CR>
+nnoremap <silent> <leader>wq :close<CR>
+nnoremap <silent> <leader>w= <C-w>=
+" zoom in a new tab, close the tab to come back
+nnoremap <silent> <leader>wz :tab split<CR>
+
+nnoremap <silent> <leader>tn :tabnew<CR>
+nnoremap <silent> <leader>tc :tabclose<CR>
+nnoremap <silent> <leader>to :tabonly<CR>
+
+" alternate buffer
+nnoremap <silent> <leader><leader> :b#<CR>
+
+
+" ================================================================================
 "                                  GIT
 " ================================================================================
 
@@ -588,3 +616,11 @@ omap ic <plug>(signify-motion-inner-pending)
 xmap ic <plug>(signify-motion-inner-visual)
 omap ac <plug>(signify-motion-outer-pending)
 xmap ac <plug>(signify-motion-outer-visual)
+
+" which-key group names
+let g:which_key_map = {}
+let g:which_key_map.g = { 'name': '+git' }
+let g:which_key_map.h = { 'name': '+hunk' }
+let g:which_key_map.w = { 'name': '+window' }
+let g:which_key_map.t = { 'name': '+tab' }
+silent! call which_key#register(',', 'g:which_key_map')
