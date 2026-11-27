@@ -99,6 +99,11 @@ packadd! matchit
 " retrobox, the built in gruvbox clone (256-color, ok in Terminal.app)
 set background=dark
 silent! colorscheme retrobox
+" keep syntax colors in diffs, retrobox sets a foreground
+hi DiffAdd    ctermfg=NONE ctermbg=22  cterm=NONE
+hi DiffChange ctermfg=NONE ctermbg=236 cterm=NONE
+hi DiffText   ctermfg=NONE ctermbg=94  cterm=bold
+hi DiffDelete ctermfg=238 ctermbg=52  cterm=NONE
 
 " Auto-select the regexp engine (0 = auto, not "new"; new engine is re=2)
 set re=0
@@ -418,10 +423,11 @@ endfunction
 let g:lightline = {
 \ 'colorscheme': 'wombat',
 \ 'active': {
-\   'left': [ ['mode', 'paste'], ['readonly', 'relativepath', 'modified'], ['diffside'] ]
+\   'left': [ ['mode', 'paste'], ['gitbranch', 'readonly', 'relativepath', 'modified'], ['diffside'] ]
 \ },
 \ 'component_function': {
-\   'diffside': 'DiffSide'
+\   'diffside': 'DiffSide',
+\   'gitbranch': 'FugitiveHead'
 \ }
 \}
 
@@ -545,3 +551,40 @@ augroup undotree_close
     au!
     autocmd QuitPre * call s:closeUndotreeIfLast()
 augroup END
+
+
+" ================================================================================
+"                                  GIT
+" ================================================================================
+
+set diffopt+=vertical
+" apple's /usr/bin/vim has no xdiff, brew and linux vim do
+silent! set diffopt+=internal,algorithm:histogram,indent-heuristic
+silent! set diffopt+=linematch:60
+
+" working tree vs index, or vs HEAD when nothing is unstaged
+function! s:DiffFile() abort
+  call system('git -C ' . shellescape(expand('%:p:h')) . ' diff --quiet -- ' . shellescape(expand('%:p')))
+  execute 'Gvdiffsplit' . (v:shell_error ? '' : ' HEAD')
+endfunction
+
+nnoremap <silent> <leader>gs :G<CR>
+nnoremap <silent> <leader>gd :call <SID>DiffFile()<CR>
+" origin/HEAD missing: git remote set-head origin -a
+nnoremap <silent> <leader>gD :Gvdiffsplit origin/HEAD<CR>
+" one tab per changed file, vs HEAD / vs the default branch
+nnoremap <silent> <leader>gt :G difftool -y HEAD<CR>
+nnoremap <silent> <leader>gT :G difftool -y origin/HEAD<CR>
+nnoremap <silent> <leader>gb :G blame<CR>
+nnoremap <silent> <leader>gc :GFiles?<CR>
+nnoremap <silent> <leader>gl :Commits<CR>
+nnoremap <silent> <leader>gL :BCommits<CR>
+
+" signify hunks, ]c [c to jump
+let g:signify_sign_change = '~'
+nnoremap <silent> <leader>hp :SignifyHunkDiff<CR>
+nnoremap <silent> <leader>hu :SignifyHunkUndo<CR>
+omap ic <plug>(signify-motion-inner-pending)
+xmap ic <plug>(signify-motion-inner-visual)
+omap ac <plug>(signify-motion-outer-pending)
+xmap ac <plug>(signify-motion-outer-visual)
